@@ -1,0 +1,7 @@
+function deleteTimers() {
+  var oldTriggers = ScriptApp.getProjectTriggers();
+  oldTriggers.forEach((trigger) => {
+    ScriptApp.deleteTrigger(trigger);
+    }
+  )
+}
