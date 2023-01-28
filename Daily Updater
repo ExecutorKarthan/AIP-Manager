@@ -1,0 +1,142 @@
+function dailyUpdater() {
+  class AIPSheets{
+    constructor(startDate, endDate, url){
+      this.startDate = startDate;
+      this.endDate = endDate;
+      this.url = url;
+    }
+  }
+
+  //Function to properly format names
+  function nameProcessor(fullString){
+    var firstLetter = fullString.slice(0,1).toUpperCase();
+    var restLetters = fullString.slice(1).toLowerCase();
+    var correctedName = firstLetter+restLetters;
+    return correctedName
+  }
+  
+  //Open the source sheets and get their information
+  var sourceSheet = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1OE_bEE2AGaTTnkACDo52vZmw8uwcZDSffpMjMq8_Xv8/edit#gid=0");
+  var studentIndex = sourceSheet.getSheetByName("Student Index");
+  var archiveIndex = sourceSheet.getSheetByName("Archive Index");
+  var sheetIndex = sourceSheet.getSheetByName("Sheet Index");
+  var teacherIndex = sourceSheet.getSheetByName("Teacher Index");
+  var sheetEditors = sourceSheet.getSheetByName("Sheet Editors");
+
+  //Import any students from the Add form
+  var formResults = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1vB12OTYJuTLQPPvUiqUGmjRuYaLkgthtu0o74-4P9iY/edit?resourcekey#gid=1707510061").getSheetByName("Students to Add");
+  var formLastRow = formResults.getLastRow();
+  if(formLastRow != 1){
+    var rangeToImport = formResults.getRange(2, 3, formLastRow-1, 5).getValues();
+    var studentLastRow = studentIndex.getLastRow();
+    var processedName;
+    var studentDataArray = [];
+    //Clean up formatting if casing is incorrect on names
+    rangeToImport.forEach((item) =>{
+        var first = nameProcessor(item[0]);
+        var last = nameProcessor(item[1]);
+        var processedName = last + " " + first;
+        item[1] = processedName;
+        item[3] = nameProcessor(item[3]);
+        item.shift();  
+      }
+    )
+    var studentTargetRange = studentIndex.getRange(studentLastRow+1, 1, rangeToImport.length, 4).setValues(rangeToImport);
+    var studentNameEquation = studentIndex.getRange(studentLastRow+1, 5, rangeToImport.length, 1).setValue("=IF(ISBLANK(C"+(studentLastRow+1)+"),A"+(studentLastRow+1)+",CONCATENATE(LEFT(A"+(studentLastRow+1)+",SEARCH(\" \",A"+(studentLastRow+1)+")), C"+(studentLastRow+1)+"))")
+  }
+ 
+ //Determine who can edit
+  var listOfEditors = [];
+  var row = 2
+  var rowValues = sheetEditors.getRange(row, 1, 1, 1).getValues()
+  while(rowValues[0][0] != ""){
+    if(rowValues[0][0] == "Email"){
+      row = row + 1;
+      rowValues = sheetEditors.getRange(row, 1, 1, 3).getValues()
+      continue
+    }
+    else{
+      listOfEditors.push(rowValues[0][0]);
+      row = row + 1;
+      rowValues = sheetEditors.getRange(row, 1, 1, 3).getValues()
+    }
+  } 
+
+  var sheetObjects = [];
+  var row = 1
+  var rowValues = sheetIndex.getRange(row, 1, 1, 3).getValues()
+  while(rowValues[0][0] != ""){
+    if(rowValues[0][0] == "Start Date"){
+      row = row + 1;
+      rowValues = sheetIndex.getRange(row, 1, 1, 3).getValues()
+      continue
+    }
+    else{
+      sheetObjects.push(new AIPSheets(rowValues[0][0], rowValues[0][1], rowValues[0][2]));
+      row = row + 1;
+      rowValues = sheetIndex.getRange(row, 1, 1, 3).getValues()
+    }
+  } 
+   
+  //Establish a time for right now
+  const now = new Date();
+
+  //Create a time to represent the follow week's first day
+  const nextFirstDay = sheetObjects[1].startDate; 
+
+  //loop through the list looking for the right sheet to edit
+  for(var sheet = 0; sheet < sheetObjects.length; sheet++){
+    //Create a date range to test. If the value is after the start(+) but before the end (-), then it is the right sheet
+    var startComp = sheetObjects[sheet].startDate;
+    var endComp = sheetObjects[sheet].endDate;
+    if((now - startComp >-1) && ((now - endComp < 0) || (now - endComp < 86400000 && now - endComp > -1))){
+      var weekSheet = SpreadsheetApp.openByUrl(sheetObjects[sheet].url).getSheets();
+      formatAndUpdateSheets(weekSheet, studentIndex, listOfEditors);
+      break
+    }
+
+    //If it is an earlier sheet (+ for both start and end values) archive the earlier sheet
+    if((now - startComp >-1) && (now - endComp >-1 ) && ((now.getDay >= 5) || (now.getDay == 0) || now - nextFirstDay > 0)){
+      console.log("Archival Sheet. The current date is " + Utilities.formatDate(now, "CT", "MM-dd-yyyy") + "\n" + "The current start day is " + startComp)
+      //protect the old sheet from editing
+      var weekSpreadsheet = SpreadsheetApp.openByUrl(sheetObjects[sheet].url);
+      var weekSheet = weekSpreadsheet.getSheets();
+      for(var protSheet = 0; protSheet < weekSheet.length; protSheet++){
+        var singleSheet = weekSheet[protSheet].getName();
+        var fullRange = weekSheet[protSheet].getRange("A1:J1000");
+        var protection = fullRange.protect().setDescription("Archived sheet - protected for historical purposes")
+        var me = Session.getEffectiveUser();
+        protection.addEditor(me);
+        protection.removeEditors(protection.getEditors());
+        if (protection.canDomainEdit()) {
+          protection.setDomainEdit(false);
+        }
+        console.log("Protect sheets")
+      }
+ 
+      //Move the old sheet to the archived folder
+      // Gets the drive File
+      var driveFile = DriveApp.getFileById(weekSpreadsheet.getId()); 
+
+      // Create a copy of the old sheet and puts the copy in the shared folder
+      var targetFolder = DriveApp.getFolderById("1c1HeC5qgY6fFhBtL3gg4jtiwXuAzk2qP");
+      var archiveSheetURL = driveFile.makeCopy(weekSpreadsheet.getName(), targetFolder).getUrl();
+      console.log("Archival copy created and moved")
+
+      //Update the record in the Source File
+      var sourceEntry = sheetIndex.getRange("A2:B2").getValues();
+      var lastRowArchive = archiveIndex.getLastRow();
+      var archiveImportLocation = archiveIndex.getRange(lastRowArchive+1,1, 1, 2).setValues(sourceEntry);
+      var updateURL = archiveIndex.getRange(lastRowArchive+1,3, 1, 1).setValue(archiveSheetURL);
+      var deleteOldEntry = sheetIndex.deleteRow(2);
+
+      //Deletes the original AIP file that was already copied and archived
+      driveFile.setTrashed(true); 
+      console.log("Original AIP Sheet file deleted")
+      
+    }
+    else{
+      console.log("No current or archival sheet ready. The current date is " + Utilities.formatDate(now, "CT", "MM-dd-yyyy") + "\n" + "The current start day is " + startComp);
+    }
+  }
+}
