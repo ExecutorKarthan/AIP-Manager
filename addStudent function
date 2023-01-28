@@ -1,0 +1,9 @@
+function autoAddStudent(studentIndex) {
+  var formResults = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1bW3o5XihVZIlEI4lvfabDrWqGnhPJ4P3yeZruhqPlOM/edit#gid=1081874716").getSheetByName("Students to Add");
+  var formLastRow = formResults.getLastRow();
+  if(formLastRow != 1){
+    var rangeToImport = formResults.getRange(2, 3, lastRow-1, 4).getValues();
+    var studentLastRow = studentIndex.getLastRow();
+    var studentTargetRange = studentIndex.getRange(studentLastRow, 1).setValues(rangeToImport);
+  }
+}
