@@ -23,7 +23,7 @@ This script will actually do the updating of student records. It starts by check
 ***Sheet Builder***
 Constructs a Google Spreadsheet for each week of school, designating tabs for each day we have homeroom and thus AIP. Each tab contains each students' name, grade, homeroom teacher and columns for other teachers to request said student for homeroom. 
 
-***Request Highlighter**
+***Request Highlighter***
 Time-scripted function that will go through a given AIP tab and highlight the names of requested students.
 
 ***Initial Format and Update***
@@ -40,4 +40,5 @@ Script to clear timers.
 
 ***AddStudent*** (May not be in use due to adding feature of Daily Updater)
 Script that takes the requst to add a student from the Google request form and adds them to the source list
+
 
