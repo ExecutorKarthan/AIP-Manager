@@ -1,5 +1,0 @@
-function setTimeTrigger() {
-  
-  ScriptApp.newTrigger("dailyUpdater").timeBased().atHour(2).nearMinute(30).everyDays(1).create();
-  ScriptApp.newTrigger("requestHighlighter").timeBased().atHour(9).nearMinute(50).everyDays(1).create();
-  }

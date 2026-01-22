@@ -32,7 +32,7 @@ function buildAndUpdate() {
   } 
 
   //Build sheets
-  sheetBuilder("110QGbXZHS0S3VwLu8Ek1aqxn7ARApBNV", "https://docs.google.com/spreadsheets/d/1Pzwp_TeEPsRmwfczD9O5rkmqiFJPXz_P4v8stbPFWQc/edit#gid=0", listOfEditors);
+  sheetBuilder("1uanU28_LS1cqn4MHhX0oImM4TB7xgUK6", "https://docs.google.com/spreadsheets/d/1rHWldvO69MQsn4kGTWRD20QQnJkZYmTt6c8eAWL0NpI/edit?gid=0#gid=0", listOfEditors);
 
   //Create sheet objects to copy to the source index
   var sheetObjects = [];
